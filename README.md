@@ -20,8 +20,10 @@ used yet is printed at the end of each guess.
 
 ## INSTALL
 
-Ensure you have golang and make installed. Then run `sudo make install` to
-compile and install `jotto`. You can run `sudo make uninstall` to uninstall.
+Ensure you have `golang`, `scdoc` and `make` installed. Then run `sudo make
+install` to compile and install `jotto`. You can run `sudo make uninstall` to
+uninstall. If you're missing `scdoc` make will print an error, but will still
+install `jotto` just without the man page.
 
 Alternatively, you can run `go build` and copy the `jotto` binary anywhere you'd
 like.

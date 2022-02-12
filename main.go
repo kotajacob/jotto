@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -42,28 +43,39 @@ func initialModel() model {
 	ti.Focus()
 	ti.CharLimit = wordLength
 	ti.Width = wordLength
+	id := getID()
 
-	// Get today's wordle answer.
-	now := time.Now()
-	tz := now.Location()
-	start := time.Date(2021, time.June, 19, 0, 0, 0, 0, tz)
-	id := int(now.Sub(start).Hours() / 24)
-
-	// Handle dates before the start.
-	if id < 0 {
-		id = -id
-	}
-
-	// Handle dates after the end.
-	for id >= len(answers) {
-		id -= len(answers)
-	}
-
+	// Try to use the first command line argument instead.
 	return model{
 		textInput: ti,
 		id:        id,
 		answer:    answers[id],
 	}
+}
+
+// getID returns a wordle ID. If first command line argument is a number use
+// that; otherwise get it from the current local date.
+func getID() int {
+	if len(os.Args) > 1 {
+		id, err := strconv.Atoi(os.Args[1])
+		if err == nil {
+			return id
+		}
+	}
+
+	now := time.Now()
+	tz := now.Location()
+	start := time.Date(2021, time.June, 19, 0, 0, 0, 0, tz)
+	id := int(now.Sub(start).Hours() / 24)
+
+	// Handle dates before the start and after the end.
+	if id < 0 {
+		id = -id
+	}
+	for id >= len(answers) {
+		id -= len(answers)
+	}
+	return id
 }
 
 // Init is called before the main game loop.

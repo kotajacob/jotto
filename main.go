@@ -94,11 +94,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyEnter:
 			m = guess(m)
 
-			// If all guesses were used up or the last guess was the correct
-			// answer exit the game.
-			if len(m.guesses) == maxGuesses || m.guesses[len(m.guesses)-1] == m.answer {
+			if len(m.guesses) == maxGuesses {
 				result(m)
 				return m, tea.Quit
+			}
+
+			if len(m.guesses) > 0 {
+				if m.guesses[len(m.guesses)-1] == m.answer {
+					result(m)
+					return m, tea.Quit
+				}
 			}
 		case tea.KeyCtrlC, tea.KeyEsc:
 			return m, tea.Quit

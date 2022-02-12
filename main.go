@@ -31,7 +31,7 @@ type errMsg error
 // model contains the program state and implements the tea.Model interface.
 type model struct {
 	textInput textinput.Model
-	guesses   []string
+	guesses   []guess
 	id        int
 	answer    string
 	err       error
@@ -92,7 +92,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyEnter:
-			m = guess(m)
+			m = tryGuess(m)
 
 			if len(m.guesses) == maxGuesses {
 				result(m)
@@ -100,7 +100,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			if len(m.guesses) > 0 {
-				if m.guesses[len(m.guesses)-1] == m.answer {
+				if m.guesses[len(m.guesses)-1].String() == m.answer {
+					// Quit if the most recent guess is equal to the answer.
 					result(m)
 					return m, tea.Quit
 				}
@@ -118,7 +119,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func guess(m model) model {
+// tryGuess attempts to use the current text input field to create a guess. If
+// the input is too short or a non-valid word a new identical model is returned.
+func tryGuess(m model) model {
 	g := m.textInput.Value()
 
 	// Check if the guess is a valid length.
@@ -131,7 +134,7 @@ func guess(m model) model {
 		return m
 	}
 
-	m.guesses = append(m.guesses, g)
+	m.guesses = append(m.guesses, newGuess(g, m.answer))
 	m.textInput.SetValue("")
 	return m
 }
@@ -149,26 +152,21 @@ func (m model) View() string {
 		view.WriteString(" ")
 
 		var word strings.Builder
-		for ii, c := range guess {
-			// Color the letters and list unused letters. Green for correct
-			// letter in correct location; yellow for correct letter, but wrong
-			// location. Grey for the unused letters list.
-			letter := termenv.String(string(c))
+		for _, c := range guess {
+			colorLetter := termenv.String(string(c.letter))
 
-			if strings.ContainsRune(m.answer, c) {
-				if m.answer[ii] == byte(c) {
-					letter = letter.Foreground(termenv.ANSIBlack)
-					letter = letter.Background(termenv.ANSIBrightGreen)
-				} else {
-					letter = letter.Foreground(termenv.ANSIBlack)
-					letter = letter.Background(termenv.ANSIBrightYellow)
-				}
+			if c.value == 2 {
+				colorLetter = colorLetter.Foreground(termenv.ANSIBlack)
+				colorLetter = colorLetter.Background(termenv.ANSIBrightGreen)
+			} else if c.value == 1 {
+				colorLetter = colorLetter.Foreground(termenv.ANSIBlack)
+				colorLetter = colorLetter.Background(termenv.ANSIBrightYellow)
 			}
 
 			// Remove the current character from the unused letter list.
-			unused = strings.ReplaceAll(unused, string(c), "")
+			unused = strings.ReplaceAll(unused, string(c.letter), "")
 
-			word.WriteString(letter.String())
+			word.WriteString(colorLetter.String())
 		}
 		view.WriteString(word.String())
 		view.WriteString("  ")
@@ -189,7 +187,7 @@ func (m model) View() string {
 func result(m model) {
 	var b strings.Builder
 	b.WriteString("Wordle " + strconv.Itoa(m.id))
-	if m.guesses[len(m.guesses)-1] == m.answer {
+	if m.guesses[len(m.guesses)-1].String() == m.answer {
 		b.WriteString(" " + strconv.Itoa(len(m.guesses)))
 	} else {
 		b.WriteString(" X") // Failed to guess the answer.
@@ -198,13 +196,11 @@ func result(m model) {
 
 	for _, guess := range m.guesses {
 		var word strings.Builder
-		for ii, c := range guess {
-			if strings.ContainsRune(m.answer, c) {
-				if m.answer[ii] == byte(c) {
-					word.WriteString("🟩")
-				} else {
-					word.WriteString("🟨")
-				}
+		for _, c := range guess {
+			if c.value == 2 {
+				word.WriteString("🟩")
+			} else if c.value == 1 {
+				word.WriteString("🟨")
 			} else {
 				word.WriteString("⬛")
 			}
